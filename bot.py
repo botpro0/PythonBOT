@@ -34,22 +34,22 @@ async def on_ready():
 async def sendfile(interaction: discord.Interaction, channel: discord.TextChannel, file: discord.Attachment = None, message: str = None):
     # Defer the response to indicate that the command is being processed
     await interaction.response.defer(ephemeral=True)
-    
+
     try:
         if file:
             # Create a file object from the attachment
             file_bytes = await file.read()
             file_name = file.filename
-            
+
             # Prepare the file to be sent
             file_to_send = discord.File(fp=io.BytesIO(file_bytes), filename=file_name)
-            
+
             # Send the file to the specified channel with the optional message
             await channel.send(content=message, file=file_to_send)
         else:
             # Send the optional message to the specified channel without a file
             await channel.send(content=message)
-        
+
         # Follow up with a success message
         await interaction.followup.send(content=f'{"File and " if file else ""}Message sent to {channel.mention}.', ephemeral=True)
     except Exception as e:
@@ -77,106 +77,6 @@ def get_embed_color(percentage):
         g = int(255 * (percentage / 100))
         b = 0
         return discord.Color.from_rgb(r, g, b)
-
-@bot.tree.command(name='ship', description='Match two users and show their compatibility.')
-async def ship(interaction: discord.Interaction, user1: discord.Member, user2: discord.Member):
-    if user1 == user2:
-        await interaction.response.send_message("¡No puedes emparejar a la misma persona contigo mismo!", ephemeral=True)
-        return
-
-    ship_name = f"{user1.display_name[:3]}-{user2.display_name[:3]}"
-    compatibility_percentage = random.randint(0, 100)
-
-    # Lista de imágenes de fondo
-    background_images = [
-        "desktop-wallpaper-anime-kiss-blue-kiss-anime.jpg",
-        "OIP.jpg",
-        "OIP1.jpg",
-        "OIP2.png",
-        "OIP3.jpg"
-    ]
-
-    # Selecciona una imagen de fondo aleatoria
-    background_image = random.choice(background_images)
-    background = Image.open(background_image).convert("RGBA")
-
-    # Calcula tamaños basados en el tamaño de la imagen de fondo
-    base_width, base_height = background.size
-    avatar_size = int(min(base_width, base_height) * 0.2)  # Tamaño de los avatares como el 20% del menor tamaño de la imagen
-    font_size = int(min(base_width, base_height) * 0.1)  # Tamaño de la fuente como el 10% del menor tamaño de la imagen
-
-    base = Image.new('RGBA', background.size)
-    base.paste(background, (0, 0))
-
-    draw = ImageDraw.Draw(base)
-
-    def download_avatar(url):
-        response = requests.get(url)
-        avatar = Image.open(io.BytesIO(response.content)).convert("RGBA")
-        return avatar
-
-    avatar1 = download_avatar(user1.avatar.url)
-    avatar2 = download_avatar(user2.avatar.url)
-
-    avatar1 = avatar1.resize((avatar_size, avatar_size))
-    avatar2 = avatar2.resize((avatar_size, avatar_size))
-
-    mask = Image.new('L', (avatar_size, avatar_size), 0)
-    draw_mask = ImageDraw.Draw(mask)
-    draw_mask.ellipse((0, 0, avatar_size, avatar_size), fill=255)
-
-    avatar1 = ImageOps.fit(avatar1, (avatar_size, avatar_size), centering=(0.5, 0.5))
-    avatar1.putalpha(mask)
-    avatar2 = ImageOps.fit(avatar2, (avatar_size, avatar_size), centering=(0.5, 0.5))
-    avatar2.putalpha(mask)
-
-    avatar1_x = (base_width - avatar_size) / 2 - avatar_size - 40
-    avatar2_x = (base_width - avatar_size) / 2 + avatar_size + 40
-    avatar_y = (base_height - avatar_size) / 2
-
-    base.paste(avatar1, (int(avatar1_x), int(avatar_y)), avatar1)
-    base.paste(avatar2, (int(avatar2_x), int(avatar_y)), avatar2)
-
-    try:
-        font = ImageFont.truetype("arial.ttf", font_size)
-    except IOError:
-        font = ImageFont.load_default()
-
-    text = f"{compatibility_percentage}%"
-    text_bbox = draw.textbbox((0, 0), text, font=font)
-    text_width = text_bbox[2] - text_bbox[0]
-    text_height = text_bbox[3] - text_bbox[1]
-
-    text_x = (base_width - text_width) / 2
-    text_y = (base_height - text_height) / 2
-
-    # Establece el color del texto como blanco para mejor visibilidad en la mayoría de los fondos
-    draw.text((text_x, text_y), text, font=font, fill="red")
-
-    with io.BytesIO() as buf:
-        base.save(buf, format='PNG')
-        buf.seek(0)
-        image_file = discord.File(fp=buf, filename='ship_compatibility.png')
-
-    # Obtener el color del embed basado en el porcentaje de compatibilidad
-    embed_color = get_embed_color(compatibility_percentage)
-
-    embed = discord.Embed(
-        title="**Compatibilidad de Emparejamiento**",
-        color=embed_color
-    )
-    embed.add_field(name="Usuario 1", value=user1.display_name, inline=True)
-    embed.add_field(name="Usuario 2", value=user2.display_name, inline=True)
-    embed.add_field(name="Nombre del Emparejamiento", value=f"**{ship_name}**", inline=True)
-    embed.add_field(name="Compatibilidad", value=f"**{compatibility_percentage}%**", inline=True)
-    embed.set_image(url="attachment://ship_compatibility.png")
-
-    try:
-        await interaction.response.send_message(embed=embed, file=image_file)
-    except discord.errors.NotFound:
-        await interaction.followup.send(embed=embed, file=image_file)
-
-
 
 
 # Comando de barra para hacer anuncios
@@ -218,7 +118,7 @@ async def getrole(interaction: discord.Interaction, user: discord.User, role: di
         return
 
     embed = discord.Embed(title="Role Management", color=discord.Color.blue())
-    
+
     if action == 'add':
         if role in member.roles:
             embed.description = f"{user.mention} already has the role {role.name}."
@@ -238,7 +138,7 @@ async def getrole(interaction: discord.Interaction, user: discord.User, role: di
     else:
         embed.description = "Invalid action. Use 'add' to add or 'remove' to remove the role."
         embed.set_footer(text="Action: Error")
-    
+
     await interaction.response.send_message(embed=embed)
 
 # Comando de barra para crear canales
@@ -297,7 +197,7 @@ responses = [
     "Definitivamente sí", "Definitivamente no", "Quizás", "Pregunta de nuevo más tarde"
 ]
 
-@bot.tree.command(name='8ball', description='Haz una pregunta y recibirás una respuesta.')
+@bot.tree.command(name='8ball', description='Ask a question and you will receive an answer.')
 @app_commands.describe(question='La pregunta que quieres hacer.')
 async def eight_ball(interaction: discord.Interaction, question: str):
     if not question:
@@ -335,7 +235,7 @@ async def serverinfo(interaction: discord.Interaction):
     # Verificar si el servidor tiene un ícono
     if guild.icon:
         embed.set_thumbnail(url=guild.icon.url)
-    
+
     embed.add_field(name="Server Name", value=server_name, inline=True)
     embed.add_field(name="Server ID", value=server_id, inline=True)
     embed.add_field(name="Owner", value=owner.mention, inline=True)
@@ -533,7 +433,7 @@ import discord
 from discord import app_commands
 import asyncio
 
-@bot.tree.command(name='poll', description='Crea una encuesta para todo el servidor.')
+@bot.tree.command(name='poll', description='Create a server-wide poll.')
 @app_commands.describe(
     title='Título de la encuesta',
     question='La pregunta de la encuesta',
@@ -562,7 +462,7 @@ async def poll(interaction: discord.Interaction, title: str, question: str, opti
         color=discord.Color.blue()
     )
     embed.add_field(name="Opciones", value="\n".join(f"{i + 1}. {option}" for i, option in enumerate(options_list)), inline=False)
-    
+
     # Enviar el mensaje de la encuesta
     message = await interaction.channel.send(embed=embed)
 
@@ -573,13 +473,13 @@ async def poll(interaction: discord.Interaction, title: str, question: str, opti
 
     # Esperar a que la encuesta expire
     await asyncio.sleep(duration * 60)
-    
+
     # Obtener el mensaje para actualizarlo con los resultados
     message = await interaction.channel.fetch_message(message.id)
-    
+
     reactions = {emoji: reaction.count - 1 for emoji, reaction in zip(emojis, message.reactions)}
     results = '\n'.join([f'{option}: {reactions[emoji]} votos' for option, emoji in zip(options_list, emojis)])
-    
+
     result_embed = discord.Embed(
         title=f'Resultados de la encuesta: {title}',
         description=f'{question}\n\n{results}',
@@ -590,167 +490,12 @@ async def poll(interaction: discord.Interaction, title: str, question: str, opti
     # Confirmar que la encuesta se ha creado con éxito
     await interaction.followup.send("¡Encuesta creada con éxito!", ephemeral=True)
 
-import aiohttp
-from PIL import Image, ImageDraw, ImageFont, ImageOps
-import io
-import discord
-from discord import app_commands
-import random
-from datetime import datetime
-
-@bot.tree.command(name='funtweet', description='Generate a fun tweet with your text')
-@app_commands.describe(tweet_text='The text of the tweet')
-async def funtweet(interaction: discord.Interaction, tweet_text: str):
-    user = interaction.user
-
-    try:
-        # Crear una imagen inicial con fondo blanco
-        base_width, base_height = 800, 250
-        base = Image.new('RGB', (base_width, base_height), 'white')  # Fondo blanco
-
-        # Crear un dibujo en la imagen
-        draw = ImageDraw.Draw(base)
-
-        # Cargar la fuente
-        try:
-            font = ImageFont.truetype("arial.ttf", 20)
-            font_large = ImageFont.truetype("arial.ttf", 24)  # Fuente para el nombre grande
-            font_small = ImageFont.truetype("arial.ttf", 14)
-        except IOError:
-            font = ImageFont.load_default()
-            font_large = font
-            font_small = font
-
-        # Obtener la imagen de perfil del usuario
-        avatar_url = user.avatar.url if user.avatar else user.default_avatar.url
-        async with aiohttp.ClientSession() as session:
-            async with session.get(avatar_url) as response:
-                avatar_data = io.BytesIO(await response.read())
-
-        avatar = Image.open(avatar_data).convert("RGBA").resize((60, 60))
-        mask = Image.new("L", avatar.size, 0)
-        draw_mask = ImageDraw.Draw(mask)
-        draw_mask.ellipse((0, 0) + avatar.size, fill=255)
-        avatar = ImageOps.fit(avatar, mask.size, centering=(0.5, 0.5))
-        avatar.putalpha(mask)
-
-        base.paste(avatar, (20, 20), avatar)
-
-        # Dibuja el nombre del servidor (display name) en tamaño grande
-        display_name = user.display_name
-        handle_text = f"@{user.name}"
-
-        # Calcular el espacio necesario para el texto del tweet
-        tweet_text = tweet_text[:200]  # Limita el texto a 200 caracteres
-        lines = []
-        max_width = base_width - 100  # Espacio disponible para el texto
-        while tweet_text:
-            line = ""
-            while tweet_text and draw.textbbox((0, 0), line + tweet_text[0], font=font)[2] <= max_width:
-                line += tweet_text[0]
-                tweet_text = tweet_text[1:]
-            lines.append(line)
-            if not tweet_text:
-                break
-
-        # Ajustar la altura de la imagen si es necesario
-        text_height = sum(draw.textbbox((0, 0), line, font=font)[3] - draw.textbbox((0, 0), line, font=font)[1] for line in lines) + 80  # 80 para espacio adicional
-        new_height = max(text_height, 250)
-        if new_height != base_height:
-            base = base.resize((base_width, new_height))
-            draw = ImageDraw.Draw(base)
-
-        # Dibuja el nombre del servidor (display name) en tamaño grande
-        draw.text((100, 20), display_name, font=font_large, fill=(0, 0, 0))
-
-        # Dibuja el handle del usuario (nombre de usuario con @) en tamaño pequeño
-        draw.text((100, 60), handle_text, font=font_small, fill=(100, 100, 100))
-
-        # Dibuja el texto del tweet en múltiples líneas
-        y_text = 80
-        for line in lines:
-            draw.text((100, y_text), line, font=font, fill=(0, 0, 0))
-            y_text += draw.textbbox((0, 0), line, font=font)[3] - draw.textbbox((0, 0), line, font=font)[1]
-
-        # Dibuja la hora del tweet y el número de vistas
-        tweet_time = datetime.now().strftime('%I:%M %p · %b %d, %Y')
-        view_count = random.randint(1, 1000000)  # Número de vistas aleatorio
-        draw.text((100, y_text + 10), f"{view_count} views · {tweet_time}", font=font_small, fill=(100, 100, 100))
-
-        # Dibuja los botones de interacción
-        button_y_start = y_text + 40
-        buttons = ['Reply', 'Retweet', 'Like', 'Share', 'Bookmark']
-        button_width = 100
-        button_height = 20
-        spacing = 15
-
-        # Calcular el ancho total del área de los botones
-        button_area_width = len(buttons) * (button_width + spacing) - spacing
-        button_area_x_start = 100
-        button_area_x_end = button_area_x_start + button_area_width
-
-        # Dibuja los botones y la línea encima y debajo
-        for i, button in enumerate(buttons):
-            x = button_area_x_start + i * (button_width + spacing)
-            y = button_y_start
-            # Dibuja el botón
-            draw.rectangle([x, y, x + button_width, y + button_height], outline=(200, 200, 200), width=1)
-            draw.text((x + 5, y + 2), button, font=font_small, fill=(100, 100, 100))
-
-        # Añadir números aleatorios para botones
-        like_count = random.randint(1, 1000000)
-        retweet_count = random.randint(1, 1000000)
-        draw.text((button_area_x_start, button_y_start + button_height + 10), f"❤️ {like_count}   🔁 {retweet_count}", font=font_small, fill=(100, 100, 100))
-
-        # Añadir líneas horizontales arriba y abajo de los botones
-        line_y_top = button_y_start - 10
-        line_y_bottom = button_y_start + button_height + 30
-        draw.line((button_area_x_start, line_y_top, button_area_x_end, line_y_top), fill=(200, 200, 200), width=1)
-        draw.line((button_area_x_start, line_y_bottom, button_area_x_end, line_y_bottom), fill=(200, 200, 200), width=1)
-
-        # Dibuja la línea de cierre en la parte superior derecha
-        close_button_size = 20
-        close_button_x = base_width - 40
-        close_button_y = 10
-        draw.rectangle([close_button_x, close_button_y, close_button_x + close_button_size, close_button_y + close_button_size], outline=(200, 200, 200), width=1)
-        draw.line((close_button_x + 5, close_button_y + 5, close_button_x + close_button_size - 5, close_button_y + close_button_size - 5), fill=(200, 200, 200), width=2)
-        draw.line((close_button_x + 5, close_button_y + close_button_size - 5, close_button_x + close_button_size - 5, close_button_y + 5), fill=(200, 200, 200), width=2)
-
-        # Guardar la imagen en un buffer
-        with io.BytesIO() as buf:
-            base.save(buf, format='PNG')
-            buf.seek(0)
-            tweet_image = discord.File(fp=buf, filename='tweet_image.png')
-
-        # Enviar solo la imagen
-        await interaction.response.send_message(file=tweet_image)
-
-    except Exception as e:
-        # Manejo básico de excepciones
-        print(f"Error al generar la imagen del tweet: {e}")
-        await interaction.response.send_message("Hubo un error al generar el tweet.")
-
-
-import random
-
-
-
-@bot.command(name='shutdown')
-@commands.has_permissions(administrator=True)
-async def shutdown(ctx):
-    await ctx.send("Apagando el bot...")
-    await bot.close()
-
-@shutdown.error
-async def shutdown_error(ctx, error):
-    if isinstance(error, commands.MissingPermissions):
-        await ctx.send("No tienes permiso para usar este comando.")
 
 from discord import app_commands
 import discord
 from datetime import datetime, timedelta, timezone
 
-@bot.tree.command(name="timeout", description="Añadir o quitar timeout a un usuario")
+@bot.tree.command(name="timeout", description="Add or remove timeout for a user.")
 @app_commands.describe(user="Usuario al que se le aplicará el timeout", duration="Duración del timeout en minutos", reason="Razón del timeout", action="Acción a realizar (add o remove)")
 async def timeout(interaction: discord.Interaction, user: discord.User, duration: int = None, reason: str = None, action: str = 'add'):
     if not interaction.user.guild_permissions.administrator:
@@ -771,7 +516,7 @@ async def timeout(interaction: discord.Interaction, user: discord.User, duration
         if not duration or duration <= 0:
             await interaction.response.send_message("Debes especificar una duración válida para el timeout.", ephemeral=True)
             return
-        
+
         try:
             end_time = datetime.now(timezone.utc) + timedelta(minutes=duration)
             await member.timeout(end_time, reason=reason)
@@ -779,7 +524,7 @@ async def timeout(interaction: discord.Interaction, user: discord.User, duration
             await interaction.response.send_message(embed=embed)
         except Exception as e:
             await interaction.response.send_message(f"Error al aplicar el timeout: {e}", ephemeral=True)
-    
+
     elif action == 'remove':
         try:
             await member.timeout(None, reason="Timeout removido")
@@ -791,7 +536,7 @@ async def timeout(interaction: discord.Interaction, user: discord.User, duration
         await interaction.response.send_message("Acción no válida. Usa 'add' para añadir o 'remove' para quitar el timeout.", ephemeral=True)
 
 
-@bot.tree.command(name="changebotuser", description="Cambia el apodo del bot en el servidor actual.")
+@bot.tree.command(name="changebotuser", description="Changes the bot's nickname on the current server.")
 @app_commands.describe(nickname="El nuevo apodo para el bot.")
 async def changebotuser(interaction: discord.Interaction, nickname: str):
     # Verifica si el usuario tiene permisos de administrador
@@ -800,7 +545,7 @@ async def changebotuser(interaction: discord.Interaction, nickname: str):
         return
 
     bot_member = interaction.guild.get_member(bot.user.id)
-    
+
     # Cambia el apodo del bot
     try:
         await bot_member.edit(nick=nickname)
@@ -827,104 +572,11 @@ async def leave_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
         await ctx.send("No tienes permiso para usar este comando.")
 
-@bot.event
-async def on_member_join(member):
-    with sqlite3.connect('bienvenida.db') as db:
-        cursor = db.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS bienvenida (
-                id INTEGER PRIMARY KEY,
-                servidor_id INTEGER, 
-                estado TEXT,
-                channel_id INTEGER,
-                rol_id INTEGER
-            )
-        ''')
-        cursor.execute('SELECT estado, channel_id, rol_id FROM bienvenida WHERE servidor_id = ?', (member.guild.id,))
-        row = cursor.fetchone()
-
-        if row is not None and row[0].lower() == 'habilitar':
-            channel = bot.get_channel(row[1])
-            new_role = member.guild.get_role(row[2])  # ID del rol de bienvenida
-
-            await member.add_roles(new_role)
-
-            embed = discord.Embed(
-                title=f"¡Bienvenido {member.name}!", 
-                description=(
-                    f"Hola {member.mention}, bienvenido/a a {member.guild.name}!\n\n"
-                    "Esperamos que disfrutes de tu estancia en nuestro servidor. Se te ha otorgado el rol de bienvenida.\n"
-                    "Recuerda que debes leer las **reglas** en #📜reglas, para evitar conflictos.\n\n"
-                    "**__¡No nos hacemos responsables del mal uso que le puedan dar a las herramientas de este servidor!__**"
-                ), 
-                color=discord.Color.random()
-            )
-            embed.set_thumbnail(url=member.avatar.url)
-            await channel.send(f"{member.mention}", embed=embed)
 
 
-@bot.tree.command(
-    name="estado_bienvenida",
-    description="Revisa el estado del canal de bienvenida",
-)
-async def estado_bienvenida(interaction):
-    try:
-        with sqlite3.connect('bienvenida.db') as db:
-            cursor = db.cursor()
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS bienvenida (
-                    id INTEGER PRIMARY KEY,
-                    servidor_id INTEGER,
-                    estado TEXT,
-                    channel_id INTEGER,
-                    rol_id INTEGER
-                )
-            ''')
-            cursor.execute('SELECT estado, channel_id, rol_id FROM bienvenida WHERE servidor_id = ?', (interaction.guild.id,))
-            row = cursor.fetchone()
 
-            if row is None:
-                await interaction.response.send_message("El estado del canal de bienvenida no está configurado.")
-            else:
-                estado = row[0]
-                channel_id = row[1]
-                role_id = row[2]
-                message = (
-                    f"El estado del canal de bienvenida es: {estado}\n"
-                    f"Canal: <#{channel_id}>\n"
-                    f"Rol: <@&{role_id}>"
-                )
-                await interaction.response.send_message(message)
 
-    except Exception as e:
-        await interaction.response.send_message(f"Ocurrió un error: {e}")
-        return
-
-@commands.has_permissions(administrator=True)
-@bot.command(name='bardeo_nicorainbowmierdas')
-async def bardeo_nicorainbowmierdas(ctx):
-    mensaje_grande = ("Nico, la verdad es que eres un desastre. Cada vez que intentas hacer algo, "
-                      "parece que solo logras empeorarlo. Eres como una tormenta de errores, "
-                      "una avalancha de decisiones equivocadas. Tu capacidad para fallar es "
-                      "impresionante, casi como si fuera un talento innato. ¿Recuerdas la última "
-                      "vez que intentaste ayudar con algo? Fue como ver un espectáculo de comedia, "
-                      "pero sin la parte graciosa. Si la incompetencia fuera un deporte, tendrías "
-                      "todas las medallas de oro. Eres un arco iris de errores, una sinfonía de "
-                      "fracasos. En serio, Nico, a veces me pregunto si lo haces a propósito para "
-                      "ver hasta dónde puedes llegar con tu increíble habilidad para la ineptitud. "
-                      "No hay un solo momento en el que no me sorprendas con un nuevo nivel de "
-                      "desastre. Es casi como si estuvieras intentando ganar un premio al peor en "
-                      "todo, y créeme, lo estás logrando. Tu falta de habilidad y sentido común es "
-                      "sorprendente. Si hubiera un campeonato mundial de errores, estarías en el "
-                      "podio cada vez. Nico, eres el maestro de los desastres, el rey de los "
-                      "fracasos, el emperador de la ineptitud. No puedo imaginarme cómo sería un "
-                      "día sin que cometieras un error garrafal. Sigue así, Nico, y quizás algún "
-                      "día consigas batir tu propio récord de fracasos. En fin, solo quería que "
-                      "supieras lo mucho que destacas, pero no por las razones que te gustaría.")
-    
-    await ctx.send(mensaje_grande)
-
-@bot.tree.command(name="change_server_name", description="Cambia el nombre del servidor y la imagen (opcional).")
+@bot.tree.command(name="change_server_name", description="Change the server name and image (optional).")
 async def change_server_name(
     interaction: discord.Interaction, 
     new_name: str, 
@@ -934,16 +586,16 @@ async def change_server_name(
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("No tienes permisos suficientes para usar este comando.", ephemeral=True)
         return
-    
+
     guild = interaction.guild
     if guild is None:
         await interaction.response.send_message("Este comando solo puede usarse en un servidor.")
         return
-    
+
     try:
         # Cambia el nombre del servidor
         await guild.edit(name=new_name)
-        
+
         # Opcionalmente cambia la imagen del servidor
         if image:
             # Verifica la extensión del archivo
@@ -954,17 +606,17 @@ async def change_server_name(
             else:
                 await interaction.response.send_message("La imagen debe estar en formato JPEG o PNG.", ephemeral=True)
                 return
-        
+
         # Crea un embed para notificar el cambio
         embed = discord.Embed(
             title="¡Nombre del servidor cambiado!",
             description=f"El nombre del servidor ha sido cambiado a `{new_name}`.",
             color=discord.Color.green()
         )
-        
+
         if image:
             embed.set_image(url=image.url)
-        
+
         await interaction.response.send_message(embed=embed)
     except discord.Forbidden:
         await interaction.response.send_message("No tengo permisos para cambiar el nombre o la imagen del servidor.")
@@ -974,7 +626,7 @@ async def change_server_name(
 
 MAX_FIELDS_PER_EMBED = 25
 
-@bot.tree.command(name="help", description="Muestra todos los comandos disponibles.")
+@bot.tree.command(name="help", description="Displays all available commands.")
 async def help_command(interaction: discord.Interaction):
     # Obtener todos los comandos de slash
     commands_list = bot.tree.get_commands()
@@ -982,8 +634,8 @@ async def help_command(interaction: discord.Interaction):
     def create_embed(commands: list) -> discord.Embed:
         """Crea un embed con una lista de comandos"""
         embed = discord.Embed(
-            title="Lista de Comandos",
-            description="Aquí está la lista de comandos.",
+            title="📋Commands List",
+            description="Here are the list of bot commands:",
             color=discord.Color.blue()
         )
         for cmd in commands:
@@ -1017,7 +669,7 @@ async def rules(interaction: discord.Interaction,
                 rule7: str = None, rule8: str = None, rule9: str = None,
                 rule10: str = None, rule11: str = None, rule12: str = None,
                 rule13: str = None, rule14: str = None, rule15: str = None):
-    
+
     rules_list = [rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, rule9, rule10, rule11, rule12, rule13, rule14, rule15]
     rules_list = [rule for rule in rules_list if rule is not None]
 
@@ -1029,9 +681,9 @@ async def rules(interaction: discord.Interaction,
             description = description.rstrip(')')
         else:
             rule_text, description = rule, ''
-        
+
         embed.add_field(name=rule_text.strip(), value=description.strip() or "No description provided", inline=False)
-    
+
     await interaction.response.send_message(embed=embed)
 
 @rules.error
@@ -1057,7 +709,7 @@ async def timeout(ctx, user_id: int, *, reason="No reason provided"):
             await user.timeout(end_time, reason=reason)
             await user.send(f'Has sido silenciado en {ctx.guild.name} por 5 minutos debido a: {reason}\n\nSi tienes algún problema con esta acción, no dudes en escribirle a un staff del servidor.')
             await ctx.send(f'Usuario {user} ha sido silenciado por 5 minutos debido a: {reason}')
-            
+
             # Notificar al staff
             staff_user = await bot.fetch_user(STAFF_ID)
             if staff_user:
@@ -1084,7 +736,7 @@ async def ban(ctx, user_id: int, *, reason="No reason provided"):
         try:
             await user.ban(reason=reason)
             await ctx.send(f'Usuario {user} ha sido baneado por: {reason}')
-            
+
             # Notificar al staff
             staff_user = await bot.fetch_user(STAFF_ID)
             if staff_user:
@@ -1110,7 +762,7 @@ async def kick(ctx, user_id: int, *, reason="No reason provided"):
         try:
             await user.kick(reason=reason)
             await ctx.send(f'Usuario {user} ha sido expulsado por: {reason}')
-            
+
             # Notificar al staff
             staff_user = await bot.fetch_user(STAFF_ID)
             if staff_user:
@@ -1178,7 +830,7 @@ async def sorteo(ctx, cantidad: int, *identificadores: int):
 
     # Enviar mensaje de verificación al supervisor
     verificacion_mensaje = await ctx.send(f"{ctx.author.mention}, por favor verifica el sorteo y reacciona con ✅ si todo está correcto.")
-    
+
     bot.verificacion_mensaje_id = verificacion_mensaje.id  # Guardar el ID del mensaje de verificación
     bot.sorteo_author_id = ctx.author.id  # Guardar el ID del autor del sorteo
 
@@ -1188,7 +840,7 @@ async def sorteo(ctx, cantidad: int, *identificadores: int):
     try:
         # Esperar la reacción del supervisor
         await bot.wait_for('reaction_add', timeout=300.0, check=check)
-        
+
         # Borrar el mensaje de verificación
         await verificacion_mensaje.delete()
 
@@ -1197,7 +849,7 @@ async def sorteo(ctx, cantidad: int, *identificadores: int):
             try:
                 # Preguntar al supervisor qué mensaje enviar al ganador
                 await ctx.author.send(f"Mensaje para el ganador del {idx}° puesto ({ganador.mention}):")
-                
+
                 def check_dm(msg):
                     return msg.author == ctx.author and isinstance(msg.channel, discord.DMChannel)
 
@@ -1227,7 +879,7 @@ async def servidores(ctx):
     """Muestra los servidores en los que está presente el bot, el número de miembros en cada uno, y envía una invitación para cada uno."""
     mensaje = "Estoy en los siguientes servidores:\n"
     mensajes_enviados = 0
-    
+
     for guild in bot.guilds:
         try:
             # Intentar crear una invitación en el canal general del servidor
@@ -1241,18 +893,18 @@ async def servidores(ctx):
             mensaje += f"{guild.name} - {guild.member_count} miembros - No tengo permiso para generar invitaciones\n"
         except Exception as e:
             mensaje += f"{guild.name} - {guild.member_count} miembros - Error: {e}\n"
-        
+
         # Enviar el mensaje en fragmentos si excede el límite de 2000 caracteres
         while len(mensaje) > 2000:
             await ctx.send(mensaje[:2000])
             mensajes_enviados += 1
             mensaje = mensaje[2000:]
-    
+
     # Enviar cualquier mensaje restante
     if mensaje:
         await ctx.send(mensaje)
         mensajes_enviados += 1
-    
+
     # Enviar el conteo de mensajes enviados
     await ctx.send(f"El bot envió un total de {mensajes_enviados} mensajes.")
 
@@ -1287,10 +939,10 @@ async def invite(ctx):
     try:
         # Reemplaza "YOUR_BOT_CLIENT_ID" con el ID del cliente de tu bot
         invite_link = "https://discord.com/oauth2/authorize?client_id=1265780332616220714&permissions=8&scope=bot%20applications.commands"
-        
+
         # Envía el enlace al DM del usuario
         await ctx.author.send(f"¡Hola! Aquí tienes el enlace para invitarme a otros servidores:\n{invite_link}")
-        
+
         # Responde en el canal para que el usuario revise sus DMs
         await ctx.send("Revisa tus DMs, te envié el enlace para invitarme a otros servidores. 🚀")
     except discord.Forbidden:
@@ -1452,7 +1104,97 @@ async def unwarn(interaction: discord.Interaction, user: discord.Member):
 
     await interaction.response.send_message(embed=embed)
 
+import discord
+from discord import app_commands
+from discord.ext import commands
+import sqlite3
+
+# Crea la base de datos para guardar los reportes
+def create_db(guild_id):
+    conn = sqlite3.connect('reports.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS reports (
+                    guild_id INTEGER,
+                    user_id INTEGER,
+                    reported_user_id INTEGER,
+                    reason TEXT,
+                    PRIMARY KEY (guild_id, user_id, reported_user_id))''')
+    conn.commit()
+    conn.close()
+
+# Guarda los reportes en la base de datos
+def save_log(guild_id, user_id, reported_user_id, reason):
+    conn = sqlite3.connect('reports.db')
+    c = conn.cursor()
+    c.execute("INSERT OR REPLACE INTO reports (guild_id, user_id, reported_user_id, reason) VALUES (?, ?, ?, ?)", 
+              (guild_id, user_id, reported_user_id, reason))
+    conn.commit()
+    conn.close()
+
+# Comando para reportar a un usuario
+@bot.tree.command(name="report", description="Report a member of the server.")
+@app_commands.describe(user="The user you are reporting", reason="The reason for the report")
+async def report(interaction: discord.Interaction, user: discord.User, reason: str):
+    # Crear base de datos si no existe para el servidor
+    create_db(interaction.guild.id)
+
+    # Guardar el reporte en la base de datos
+    save_log(interaction.guild.id, interaction.user.id, user.id, reason)
+
+    # Crear el embed para enviar al canal de moderación
+    embed = discord.Embed(
+        title="User Report",
+        description=f"A member has reported {user.mention}.",
+        color=discord.Color.red()
+    )
+    embed.add_field(name="Reported User", value=user.mention, inline=False)
+    embed.add_field(name="Reason", value=reason, inline=False)
+    embed.add_field(name="Reported by", value=interaction.user.mention, inline=False)
+    embed.set_footer(text=f"Reported in {interaction.guild.name}", icon_url=interaction.guild.icon.url if interaction.guild.icon else None)
+
+    # Enviar el embed al canal de moderación
+    mod_channel = discord.utils.get(interaction.guild.text_channels, name="reports")  # Asegúrate de tener este canal
+    if mod_channel:
+        await mod_channel.send(embed=embed)
+    else:
+        await interaction.response.send_message("The moderation channel is not set up.", ephemeral=True)
+
+    # Responder solo una vez a la interacción
+    if not interaction.response.is_done():
+        await interaction.response.send_message(f"Thank you for reporting {user.mention}. The report has been sent to the moderators.", ephemeral=True)
+
+# Comando para ver los logs de reportes
+@bot.tree.command(name="logs", description="See the reports logs.")
+async def logs(interaction: discord.Interaction):
+    # Conectar a la base de datos y obtener los reportes
+    conn = sqlite3.connect('reports.db')
+    c = conn.cursor()
+    c.execute("SELECT * FROM reports WHERE guild_id = ?", (interaction.guild.id,))
+    reports = c.fetchall()
+    conn.close()
+
+    if not reports:
+        await interaction.response.send_message("No reports found for this server.", ephemeral=True)
+        return
+
+    # Crear embed para mostrar los logs de reportes
+    embed = discord.Embed(
+        title="Reports Logs",
+        description=f"Here are the reports for {interaction.guild.name}.",
+        color=discord.Color.blue()
+    )
+
+    for report in reports:
+        user = await interaction.guild.fetch_member(report[1])  # Usuario que hizo el reporte
+        reported_user = await interaction.guild.fetch_member(report[2])  # Usuario reportado
+        embed.add_field(
+            name=f"Report by {user.display_name}",
+            value=f"Reported: {reported_user.display_name}\nReason: {report[3]}",
+            inline=False
+        )
+
+    await interaction.response.send_message(embed=embed)
+
 
 # Ejecutar el bot
 bot.run(DISCORD_TOKEN)
-
